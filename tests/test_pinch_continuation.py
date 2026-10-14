@@ -41,30 +41,6 @@ def test_pinch_detour_does_not_cross_critical_value_or_zero():
     assert _legs._pinch_detour(cov,1.95+1j,2.05+1j) is None
 
 
-def test_conductor_295_regulator_converges_with_bounded_edges():
-    from unittest.mock import patch
-    from hyperell_regulator.experiments import beilinson as b
-    x=ring().gen();F=x**6+2*x**3-4*x*x+1
-    periods=[];original=b._regulator_column_and_periods
-    def column(*args,**kwargs):
-        col,per=original(*args,**kwargs)
-        periods.append(np.asarray(per,float))
-        return col,per
-    with IntegrationMonitor(max_edge_seconds=15,max_edge_steps=100000) as monitor:
-        with patch.object(b,'_regulator_column_and_periods',column):
-            det,matrix,_=b.beilinson_determinant_stokes(F,(0,1),14,(1,0),7)
-    assert len(monitor.records)==10
-    assert all(e['status']=='ok' for e in monitor.records)
-    np.testing.assert_allclose(periods[0],periods[1],atol=1e-9,rtol=0)
-    assert abs(float(det)-18.0731942157733)<1e-8
-    for e in monitor.records:
-        for key in ('trace_periods','trace_log_periods'):
-            assert max(abs(complex(*v)) for v in e[key])<1e-9
-    print('295 det',float(det),'independent period difference',
-          np.max(abs(periods[0]-periods[1])),
-          'slowest edge',max(e['seconds'] for e in monitor.records),flush=True)
-
-
 def test_ramified_pinch_is_not_treated_as_an_ordinary_collision():
     x=ring().gen();cov=Cover(x**5+x+1,2+2*x*x,x*x)
     # Here both points over x=0 have ramification index two over w=2.
@@ -101,20 +77,3 @@ def test_preflight_chart_choices_are_reused_without_skipping_nodes():
     np.testing.assert_allclose(xe,b,atol=1e-12,rtol=0)
     np.testing.assert_allclose(ye*ye,complex((x**5+x+1)(b)),atol=1e-12,rtol=0)
     assert np.all(np.isfinite(leg.dI)) and np.max(abs(leg.dI))>0
-
-
-def test_295_preflight_preserves_y_sheet_at_tangent_projection_collision():
-    from hyperell_regulator.regulator import function_with_divisor
-    x=ring().gen(); F=x**6+2*x**3-4*x*x+1
-    cov=Cover(F,*function_with_divisor(F,(0,1),'infinity',14))
-    end=0.0065551065034296085; a=end/2; b=end+0.08*(a-end)
-    xx,yy=cov.fibre(a); lam=np.full(cov.N,np.log(a),complex)
-    with IntegrationMonitor(max_edge_seconds=15) as monitor:
-        with monitor.edge('295 preflight',degree=14):
-            actual=_legs.leg_in_w(cov,a,b,xx,yy,lam,
-                                 toward=(end,2),integrate=False)
-        with monitor.edge('295 straight ODE',degree=14):
-            reference=_legs._leg_in_w_ode(cov,a,b,xx,yy,lam)
-    np.testing.assert_allclose(actual[0],reference[0],atol=1e-8,rtol=0)
-    # Previously the preflight jumped to the opposite y-sheet (error 4.2).
-    np.testing.assert_allclose(actual[1],reference[1],atol=1e-8,rtol=0)

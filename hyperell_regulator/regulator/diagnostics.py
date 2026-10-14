@@ -1,4 +1,4 @@
-"""Optional work budgets and progress records for float64 integration.
+"""Optional work budgets and progress records for regulator integration.
 
 Checkpoints run inside continuation and ODE evaluation loops, so a difficult
 edge can be interrupted without waiting for the numerical solver to return.
@@ -49,8 +49,8 @@ class IntegrationLimitError(TimeoutError):
 class IntegrationMonitor:
     """Collect per-edge diagnostics, with optional cooperative limits.
 
-    Use ``with IntegrationMonitor(...) as monitor:`` around a float64 API
-    call.  ``callback(event)`` receives ``start``, ``progress`` and ``end``
+    Use ``with IntegrationMonitor(...) as monitor:`` around a float64 or
+    arbitrary-precision API call.  ``callback(event)`` receives ``start``, ``progress`` and ``end``
     events; progress is throttled to ``progress_interval`` seconds.  A step
     is one continuation attempt or ODE RHS evaluation; auxiliary counters
     (for example Newton iterations) do not count those operations twice.

@@ -16,7 +16,7 @@ sage -pip install git+https://github.com/LAC1213/hyperell-regulator.git
 ```
 
 From a checkout, use `sage -pip install .`, or
-`sage -pip install -e '.[test]'` for development with tests.
+`sage -pip install -e '.[test]'` for development and tests.
 The patched `sage_cluster_pictures` dependency is installed automatically.
 
 Installation also attempts to build the bundled Frobenius accelerator using
@@ -80,9 +80,8 @@ full-precision values, exact functions, and regeneration instructions.
 
 ## Tests
 
-From a checkout:
+Install the `test` extra as shown above, then run:
 
 ```sh
-sage -python -m tests.run_regressions  # bounded numerical regression suite
-sage -python -m pytest                # full suite; requires the test extra
+sage -python -m pytest
 ```

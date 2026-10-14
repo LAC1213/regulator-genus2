@@ -83,3 +83,38 @@ def test_explicit_precision_failure_does_not_silently_fall_back():
                 r=b._analyse_triple({'label':'test','cond':1},None,t,1,verbose=False,reg_digits=30)
     assert r['status']=='numerical_failure' and r['error']=='RuntimeError: failed'
     assert calc.call_count==1 and calc.call_args.kwargs['digits']==30
+
+
+def test_higher_precision_report_is_reused_without_rounding():
+    record = dict(label='a', cond=249)
+    def analyse(record, **kwargs):
+        return dict(record, status='ok', det='1.2345678901234567890123456789', comparison={})
+    with TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
+        out = Path(d)/'report.json'
+        with patch.object(b, 'ensure_records', return_value=[record]), patch.object(b, 'analyse', side_effect=analyse) as calc:
+            b.run(out=out, reg_digits=50, digits=50, max_edge_seconds=120)
+            saved = out.read_text()
+            calc.reset_mock()
+            b.run(out=out, reg_digits=30, digits=30)
+            b.run(out=out)
+            calc.assert_not_called()
+            assert out.read_text() == saved
+            b.run(out=out, reg_digits=60, digits=50)
+            assert calc.call_count == 1
+            b.run(out=out, reg_digits=30, digits=30, force=True)
+            assert calc.call_count == 2
+
+
+def test_precision_cache_boundaries():
+    settings = dict(report_version=b.REPORT_VERSION, regulator_digits=30,
+                    lvalue_digits=30, with_lvalue=True)
+    old = dict(status='ok', settings=dict(settings, regulator_digits=50, lvalue_digits=50))
+    assert b._stored_result_satisfies(old, settings)
+    assert not b._stored_result_satisfies(old, dict(settings, lvalue_digits=60))
+    assert not b._stored_result_satisfies(old, dict(settings, report_version=-1))
+    old['settings']['regulator_digits'] = None
+    assert not b._stored_result_satisfies(old, settings)
+    old['settings']['regulator_digits'] = 10
+    assert not b._stored_result_satisfies(old, dict(settings, regulator_digits=None))
+    old['status'] = 'numerical_failure'
+    assert not b._stored_result_satisfies(old, settings)

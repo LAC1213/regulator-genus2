@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  install:
+    name: Sage install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            run_tests: true
+          - os: macos-15
+            run_tests: false
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: sage-ci
+          create-args: >-
+            python=3.11
+            sage
+            cxx-compiler
+            make
+          cache-environment: true
+          cache-downloads: true
+
+      - name: Show toolchain
+        run: |
+          sage --version
+          python --version
+          c++ --version
+          make --version
+
+      - name: Install package and require native build
+        run: HYPERELL_REGULATOR_REQUIRE_EULER=1 python -m pip install '.[test]'
+
+      - name: Check installed accelerator
+        run: |
+          cd "$RUNNER_TEMP"
+          sage -python -m hyperell_regulator.frobenius --check
+
+      - name: Run test suite
+        if: matrix.run_tests
+        run: |
+          cd "$RUNNER_TEMP"
+          sage -python -m pytest "$GITHUB_WORKSPACE/tests"

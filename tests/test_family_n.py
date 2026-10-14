@@ -110,3 +110,18 @@ def test_family_lvalue_comparison_uses_regulator_precision():
     assert abs(R(result['comparison']['ratio'])-expected) < R('1e-33')
     saved = json.loads(json.dumps(result, default=str))
     assert abs(R(saved['det'])-det) < R('1e-33')
+
+
+def test_family_reuses_higher_precision():
+    result = dict(n=2, label='family_n(2)', cond=123, status='ok',
+                  det='1.234567890123456789', comparison={})
+    with TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
+        path = Path(d)/'family.json'
+        with patch.object(f, 'beilinson_for_n', return_value=result) as calc:
+            f.run([2], out=path, reg_digits=50, digits=50, max_edge_seconds=120)
+            saved = path.read_text()
+            calc.reset_mock()
+            f.run([2], out=path, reg_digits=30, digits=30)
+            f.run([2], out=path)
+            calc.assert_not_called()
+            assert path.read_text() == saved

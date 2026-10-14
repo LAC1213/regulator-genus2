@@ -281,7 +281,7 @@ def run(ns=None, out=RESULTS, limit=None, digits=15, force=False,
           ('curve', 'cond', 'status', 'determinant', 'q', 'rational', 'rel. error'))
     for n in ns:
         old = have.get(n, {})
-        cached = not force and old.get('status') == 'ok' and old.get('settings') == settings
+        cached = not force and b._stored_result_satisfies(old, settings)
         if cached:
             result = old
         else:

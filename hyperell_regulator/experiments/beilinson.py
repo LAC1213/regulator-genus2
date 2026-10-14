@@ -10,7 +10,8 @@ distinct rational points `P, Q, R` such that
    irreducible component of the special fibre at *every* prime, and
 3. no two of `P, Q, R` are hyperelliptic conjugates,
 
-then ranks the triples by cut conditioning and evaluates the
+then ranks the triples by the sum of integration orders, breaking ties by cut conditioning,
+and evaluates the
 `3 \times 3` regulator determinant of Corollary "3x3 matrix".
 
 When moving `R` to infinity would also move `P` or `Q` there, all three
@@ -116,7 +117,7 @@ from hyperell_regulator.paths import data_path, ensure_parent
 from hyperell_regulator.regulator import c_invariants
 
 DEFAULT_CONDUCTOR_BOUND = 1000
-REPORT_VERSION = 4  # continuous period branches and precision-preserving reports
+REPORT_VERSION = 6  # minimize the sum of integration orders before conditioning
 
 LVALUES = data_path("results", "lvalue_cache.json")
 RESULTS_OUT = data_path("results", "beilinson_results.json")
@@ -403,20 +404,13 @@ def triple_conditioning(C, t, mp=False):
     How well conditioned a triple's two cut systems are, as a sort key, or
     ``None`` when the triple has no usable model.
 
-    The key is ``(detours, worst span/gap, largest N)``: with ``mp`` a detoured
-    cut system goes last, since the arbitrary-precision pass declines those
-    outright -- in float64 they integrate perfectly well, so there ``mp=False``
-    drops that term and ranks on the conditioning alone.  Otherwise the
-    binding constraint is whichever of the two columns is worse.
-    ``N`` breaks ties because it sets the running time --- on LMFDB
-    249.a.249.1 the `N = 14` column costs `8\times` the `N = 7` one at fifteen
-    digits.
+    The key is ``(n_P + n_Q, worst span/gap)`` for the orders of `P-R`
+    and `Q-R`. Thus the smaller sum of integration orders always wins;
+    among triples with the same sum, prefer the better-conditioned
+    cut systems. The rule is independent of the order of the two columns.
 
-    The spread this measures is not a detail.  On that curve the triples all
-    carry the same torsion orders, and their `Q` columns range from
-    ``span/gap = 34.5`` to ``819``; on 277.a.277.1 the range over triples runs
-    from ``6.95`` to ``2.4\cdot10^6``.  Ordering by torsion order alone, as
-    this used to, picks among them arbitrarily.
+    ``mp`` is retained for caller compatibility; both precision backends
+    support detoured cuts and use the same ranking.
     """
     try:
         G, images, xR, pole = _model_for_triple(C, t)
@@ -435,9 +429,9 @@ def triple_conditioning(C, t, mp=False):
             out.append(cut_conditioning(G, im, int(n), pole=pole))
         except Exception:                                      # noqa: BLE001
             return None
-    detours = sum(1 for r in out if r[4]) if mp else 0
+    order_sum = int(t["order_P"]) + int(t["order_Q"])
     ratio = max(r[2] / r[3] for r in out)
-    return (detours, ratio, max(r[0] for r in out)), out
+    return (order_sum, ratio), out
 
 
 def rank_triples(C, triples, verbose=False, mp=False, usable_only=False):
@@ -459,7 +453,7 @@ def rank_triples(C, triples, verbose=False, mp=False, usable_only=False):
             print("    %-46s N = %-6s span/gap %9.1f%s"
                   % ("%s / %s" % (_fmt(t["P"]), _fmt(t["Q"])),
                      "%d, %d" % (cols[0][0], cols[1][0]), key[1],
-                     "   (detour)" if key[0] else ""))
+                     "   (detour)" if any(col[4] for col in cols) else ""))
         if len(scored) > 4:
             print("    ... and %d more" % (len(scored) - 4))
     return [t for _, _, t, _ in scored] + ([] if usable_only else [t for _, t in rest])
@@ -898,12 +892,10 @@ def analyse(record, cache=CACHE, allow_undecided=False, verbose=True,
     the L-value uses fifteen digits. Arbitrary precision is explicit and
     failures never silently switch implementations.
 
-    Which triple is integrated is decided by :func:`rank_triples`, on the
-    conditioning of the cut systems it would need; only ``tries`` of them are
-    integrated, the best first, and one is the default.  Ordering by torsion
-    order instead -- which is what this did -- picks arbitrarily among triples
-    that tie, and on LMFDB 249.a.249.1 that is the difference between a `Q`
-    column with ``span/gap = 34.5`` and one with ``819``.
+    Which triple is integrated is decided by :func:`rank_triples`: minimize
+    the sum of the two integration orders, then the worst
+    span/gap. Only ``tries`` triples are integrated, best first; the default
+    is one.
     """
     rows = {r["label"]: r for r in json.load(open(cache))}
     row = rows.get(record["label"])
@@ -988,6 +980,35 @@ def ensure_records(max_cond=DEFAULT_CONDUCTOR_BOUND, cache=CACHE,
     return goodrecords
 
 
+def _stored_result_satisfies(old, settings):
+    """Reuse successful reports at equal or higher requested precision.
+
+    Float64 can satisfy only float64 requests; arbitrary precision of at
+    least 16 decimal digits can also satisfy a float64 request. Keep the
+    original result and settings, without rounding its saved decimal strings.
+    """
+    if old.get("status") != "ok" or not isinstance(old.get("settings"), dict):
+        return False
+    stored = old["settings"]
+    precision_keys = {"regulator_digits", "lvalue_digits"}
+    execution_keys = {"max_edge_seconds", "max_edge_steps", "tries"}
+    if any(stored.get(k) != v for k, v in settings.items()
+           if k not in precision_keys | execution_keys):
+        return False
+    if not precision_keys <= stored.keys():
+        return False
+    have, want = stored["regulator_digits"], settings["regulator_digits"]
+    if have is None:
+        if want is not None:
+            return False
+    elif int(have) < (16 if want is None else int(want)):
+        return False
+    if settings.get("with_lvalue"):
+        if int(stored["lvalue_digits"]) < int(settings["lvalue_digits"]):
+            return False
+    return True
+
+
 def _report_row(result, stored=False):
     comparison = result.get("comparison") or {}
     def number(value):
@@ -1010,9 +1031,10 @@ def run(max_cond=DEFAULT_CONDUCTOR_BOUND, path=RESULTS, cache=CACHE,
         max_edge_steps=100000):
     """Report cached curves with conductor < max_cond (default 1000).
 
-    The best-conditioned pairwise non-conjugate triple is tried first.
+    The pairwise non-conjugate triple with minimal sum of integration orders is
+    tried first, using cut conditioning to break ties.
     Float64 and per-edge budgets are the defaults. Successful results are
-    reused only for the same report policy and requested precision; failures
+    reused for the same report policy at equal or higher precision; failures
     are saved with their reasons but retried on the next run.
     """
     from collections import Counter
@@ -1037,8 +1059,7 @@ def run(max_cond=DEFAULT_CONDUCTOR_BOUND, path=RESULTS, cache=CACHE,
     for record in records:
         label = record["label"]
         old = have.get(label, {})
-        if (not force and old.get("status") == "ok"
-                and old.get("settings") == settings):
+        if not force and _stored_result_satisfies(old, settings):
             results.append(old)
             _report_row(old, stored=True)
             continue
