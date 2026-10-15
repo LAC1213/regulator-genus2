@@ -48,12 +48,15 @@ make NTL_INC=$HOME/ntl/include NTL_LIB=$HOME/ntl/src NTL_LINK=$HOME/ntl/src/ntl.
 make check
 ```
 
-The package installer discovers Sage's prefix (including `SAGE_LOCAL`),
-passes the include/library paths explicitly to Make, and installs the executable
-as `hyperell_regulator/bin/euler`. It ignores local `config.mk` settings.
-Set `NTL_INC`, `NTL_LIB`, `NTL_LINK`, and, if different, `GMP_INC`/`GMP_LIB`
-in the environment to override discovery. Library directories are also embedded
-as runtime search paths on Linux and macOS.
+The package installer downloads the pinned, checksum-verified NTL 11.6.0 GitHub release,
+builds it with `NTL_THREADS=on` and `NTL_THREAD_BOOST=on`, and statically links
+it into `hyperell_regulator/bin/euler`. It discovers Sage's GMP prefix
+(including `SAGE_LOCAL`); `GMP_INC`/`GMP_LIB` override those paths.
+`HYPERELL_REGULATOR_BUILD_JOBS` sets build parallelism (default: logical CPU count).
+Installation needs network access, Perl, Make, and a C++17 compiler.
+Sage's NTL is never changed. Package builds ignore local `config.mk` and
+`NTL_INC`/`NTL_LIB`/`NTL_LINK`; these remain available for manual builds.
+The build compares serial, four-worker, and CPU-count results before installing.
 
 For manual builds, copy `config.mk.example` to `config.mk` and edit it. Threads need NTL
 built with `NTL_THREADS` and `NTL_THREAD_BOOST`; without them pass `1` for

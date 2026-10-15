@@ -19,8 +19,18 @@ From a checkout, use `sage -pip install .`, or
 `sage -pip install -e '.[test]'` for development and tests.
 The patched `sage_cluster_pictures` dependency is installed automatically.
 
-Installation also attempts to build the bundled Frobenius accelerator using
-NTL and GMP. If that build is unavailable, the package uses Sage's implementation.
+Installation downloads the [NTL 11.6.0 GitHub release](https://github.com/libntl/ntl/releases/tag/v11.6.0),
+verifies its SHA-256, and builds a private
+static copy with `NTL_THREADS=on` and `NTL_THREAD_BOOST=on` for the Frobenius
+accelerator. Sage's installed NTL is untouched; GMP comes from Sage. This
+requires network access, a C++17 compiler, Perl, and Make. Build parallelism
+defaults to the logical CPU count (`HYPERELL_REGULATOR_BUILD_JOBS` overrides it).
+Set `GMP_INC` and `GMP_LIB` if GMP is outside Sage's prefix.
+If the build is unavailable, the package uses Sage's implementation.
+
+Euler-factor computation defaults to one worker per logical CPU; use
+`frobenius_polynomials(f, primes, nthreads=4)` to override the worker count.
+The build checks serial, four-worker, and CPU-count results against each other.
 To require a working accelerator during installation and then check it:
 
 ```sh

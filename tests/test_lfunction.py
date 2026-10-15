@@ -21,6 +21,9 @@ is the bug the arbitrary-precision path had to fix.
 """
 
 import os
+import subprocess
+
+import pytest
 
 from sage.all import (GF, HyperellipticCurve, PolynomialRing, QQ, RR, ZZ,
                       pari, prime_range)
@@ -124,7 +127,7 @@ def test_even_degree_without_one_is_correct_if_slow():
     f = 4 * (X ** 5 - X + 1) + (X ** 3 + X + 1) ** 2
     assert odd_model(f) is None
     ps = [p for p in prime_range(7, 90) if f.discriminant() % p]
-    got = frobenius_polynomials(f, ps, nthreads=8)
+    got = frobenius_polynomials(f, ps, nthreads=4)
     for p in ps:
         assert got[p] == _sage_frobenius(f, p), p
 
@@ -216,3 +219,31 @@ def test_arbitrary_precision_really_is():
 def test_real_field_is_wide_enough():
     for d in (10, 30, 60):
         assert _real_field(d).precision() >= int(d * 3.32)
+
+
+@pytest.mark.parametrize("workers", [2, 4, 8, None])
+@pytest.mark.parametrize("f", [F, 4 * (X**5 - X + 1) + (X**3 + X + 1)**2])
+def test_native_parallel_matrices_match_serial_and_sage(workers, f):
+    """Exercise the binary directly so fallback cannot mask native failures."""
+    binary = euler_binary()
+    if binary is None:
+        pytest.skip("Frobenius accelerator not built")
+    from hyperell_regulator.frobenius import _lift
+    ps = [int(p) for p in prime_range(31, 50) if f.discriminant() % p]
+    batch = " ".join(map(str, f.list())) + "\n"
+    batch += "".join("%d 2\n" % p for p in ps)
+    def run(n):
+        command = [binary] if n is None else [binary, str(n)]
+        result = subprocess.run(command, input=batch, text=True,
+                                capture_output=True, check=True, timeout=30)
+        rows = [list(map(int, line.split())) for line in result.stdout.splitlines()]
+        assert len(rows) == len(ps)
+        for p, row in zip(ps, rows):
+            assert row[:3] == [p, 1, 4]
+            assert len(row) == 19
+            matrix = [row[3 + 4*i:7 + 4*i] for i in range(4)]
+            assert _lift(matrix, p, 2, 2) == _sage_frobenius(f, p)
+        return rows
+    serial = run(1)
+    for _ in range(3):
+        assert run(workers) == serial

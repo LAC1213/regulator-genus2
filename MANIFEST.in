@@ -10,3 +10,5 @@ include hypellfrob-threaded/Makefile
 include hypellfrob-threaded/COPYING
 prune hypellfrob-threaded/build
 global-exclude *.pyc __pycache__
+
+include hyperell_regulator/NTL-COPYING.txt

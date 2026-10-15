@@ -57,4 +57,4 @@ jobs:
         if: matrix.run_tests
         run: |
           cd "$RUNNER_TEMP"
-          sage -python -m pytest "$GITHUB_WORKSPACE/tests"
+          HYPERELL_REGULATOR_DATA="$GITHUB_WORKSPACE" sage -python -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests"

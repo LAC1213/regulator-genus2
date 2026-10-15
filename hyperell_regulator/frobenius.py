@@ -144,7 +144,8 @@ def _run(fcoeffs, jobs, nthreads):
         return {}
     inp = " ".join(str(int(c)) for c in fcoeffs) + "\n"
     inp += "".join("%d %d\n" % (p, N) for p, N in jobs)
-    args = [binary] + ([str(int(nthreads))] if nthreads else [])
+    workers = (os.cpu_count() or 1) if nthreads is None else max(1, int(nthreads))
+    args = [binary, str(workers)]
     try:
         out = subprocess.run(args, input=inp, capture_output=True, text=True,
                              check=True).stdout
@@ -174,6 +175,11 @@ def frobenius_polynomials(f, primes, nthreads=None):
     Weierstrass point it goes through the even degree routine, which is
     correct but linear in `p`, so an even degree curve with no such point
     cannot reach the same speed.
+
+    The default uses one worker per logical CPU (``os.cpu_count()``), or one
+    if the CPU count is unavailable. Pass ``nthreads`` to override this.
+    The installed accelerator includes a private thread-safe NTL; custom
+    binaries must also be linked to a thread-safe NTL.
 
     EXAMPLES::
 
@@ -226,20 +232,39 @@ def frobenius_polynomial(f, p):
     return frobenius_polynomials(f, [p])[int(p)]
 
 
+def _check_binary(binary):
+    """Compare serial, four-worker, and CPU-count runs without Sage fallback."""
+    primes = (101, 103, 107, 109)
+    batch = "1 0 0 1 0 1\n" + "".join("%d 3\n" % p for p in primes)
+    serial = None
+    workers = tuple(dict.fromkeys((1, 4, os.cpu_count() or 1)))
+    for count in workers:
+        result = subprocess.run([binary, str(count)], input=batch, text=True,
+                                capture_output=True, check=True, timeout=30)
+        rows = [line.split() for line in result.stdout.splitlines()]
+        if len(rows) != len(primes) or any(
+                row[:3] != [str(p), "1", "4"] or len(row) != 19
+                for p, row in zip(primes, rows)):
+            raise RuntimeError("unexpected driver output: " + result.stdout)
+        if serial is not None and rows != serial:
+            raise RuntimeError("parallel matrices differ from serial")
+        serial = rows
+    return workers
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Check the installed Frobenius accelerator.")
     parser.add_argument("--check", action="store_true", required=True)
-    parser.parse_args()
-    binary = euler_binary()
+    parser.add_argument("--binary", help="check this executable instead of the installed one")
+    args = parser.parse_args()
+    binary = args.binary or euler_binary()
     if binary is None:
         parser.exit(1, "Frobenius accelerator not found; computations use Sage.\n")
     try:
-        result = subprocess.run([binary, "1"], input="1 0 0 1 0 1\n101 3\n",
-                                text=True, capture_output=True, check=True, timeout=30)
-        if result.stdout.split()[:2] != ["101", "1"]:
-            raise RuntimeError("unexpected driver output: " + result.stdout)
+        workers = _check_binary(binary)
     except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
         parser.exit(1, "Accelerator failed: %s\n%s\n" %
                     (exc, getattr(exc, "stderr", "")))
-    print("Frobenius accelerator runs successfully: " + binary)
+    print("Frobenius accelerator runs successfully with worker counts %s: %s" %
+          (", ".join(map(str, workers)), binary))

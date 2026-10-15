@@ -15,6 +15,7 @@ CXXFLAGS ?= -O2 -std=c++17
 NTL_INC  ?= /usr/local/include
 NTL_LIB  ?= /usr/local/lib
 NTL_LINK ?= -lntl
+NTL_RPATH ?= -Wl,-rpath,"$(NTL_LIB)"
 
 GMP_INC  ?= $(NTL_INC)
 GMP_LIB  ?= $(NTL_LIB)
@@ -30,12 +31,12 @@ $(BUILD):
 	@mkdir -p $(BUILD)
 
 $(BUILD)/%.o: src/%.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Isrc -I"$(NTL_INC)" -I"$(GMP_INC)" -c $< -o $@
+	$(CXX) -I"$(NTL_INC)" -I"$(GMP_INC)" -Isrc $(CPPFLAGS) $(CXXFLAGS) -pthread -c $< -o $@
 
 $(BUILD)/euler: euler.cpp $(OBJS) | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Isrc -I"$(NTL_INC)" -I"$(GMP_INC)" $^ \
+	$(CXX) -I"$(NTL_INC)" -I"$(GMP_INC)" -Isrc $(CPPFLAGS) $(CXXFLAGS) -pthread $^ \
 	    $(LDFLAGS) -L"$(NTL_LIB)" -L"$(GMP_LIB)" \
-	    -Wl,-rpath,"$(NTL_LIB)" -Wl,-rpath,"$(GMP_LIB)" $(NTL_LINK) -lgmpxx -lgmp -lpthread -o $@
+	    $(NTL_RPATH) -Wl,-rpath,"$(GMP_LIB)" $(NTL_LINK) -lgmpxx -lgmp -lpthread -o $@
 
 # A smoke test only: it shows the driver runs and produces matrices. What
 # actually checks the arithmetic is tests/test_lfunction.py, which compares
