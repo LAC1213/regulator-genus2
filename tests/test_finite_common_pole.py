@@ -5,6 +5,14 @@ from hyperell_regulator.regulator import IntegrationMonitor
 from hyperell_regulator.regulator.polynomials import ring
 
 
+# Exact LMFDB equations y^2 + h(x)y = f(x), with coefficients in
+# ascending degree. Keep the regression inputs independent of local caches.
+CURVE_249 = {"label": "249.a.6723.1",
+             "eqn": [[2, 3, 1, 1, 0, -1], [1, 0, 0, 1]]}
+CURVE_353 = {"label": "353.a.353.1",
+             "eqn": [[0, 0, 1], [1, 1, 0, 1]]}
+
+
 def test_finite_pole_column_equals_difference_of_infinity_columns():
     x=ring().gen();F=x*(x-1)*(x**3+x+1)
     with IntegrationMonitor(max_edge_seconds=15) as monitor:
@@ -16,9 +24,7 @@ def test_finite_pole_column_equals_difference_of_infinity_columns():
 
 
 def test_model_keeps_conjugate_infinities_distinct_and_affine():
-    import json
-    row=next(r for r in json.load(open(b.CACHE)) if r['label']=='249.a.6723.1')
-    C=b.curve_from_row(row)
+    C=b.curve_from_row(CURVE_249)
     points=[(-1,0),('infinity',0),('infinity',-1)]
     F,images,shift=b.model_with_finite_points(C,points)
     assert all(p!='infinity' for p in images)
@@ -30,9 +36,7 @@ def test_model_keeps_conjugate_infinities_distinct_and_affine():
 def test_finite_pole_fibre_has_no_fixed_denominator_roots():
     from hyperell_regulator.regulator import function_with_divisor
     from hyperell_regulator.regulator.cover import Cover
-    import json
-    row=next(r for r in json.load(open(b.CACHE)) if r['label']=='249.a.6723.1')
-    C=b.curve_from_row(row)
+    C=b.curve_from_row(CURVE_249)
     F,images,_=b.model_with_finite_points(C,[(-1,0),('infinity',0),('infinity',-1)])
     phi=function_with_divisor(F,images[0],images[2],7)
     cov=Cover(F,*phi)
@@ -52,11 +56,9 @@ def test_finite_pole_fibre_has_no_fixed_denominator_roots():
 
 
 def test_rank_zero_orders_and_conjugate_zero_weight():
-    import json
     from hyperell_regulator.regulator import function_with_divisor
     from hyperell_regulator.regulator.cover import Cover
-    row=next(r for r in json.load(open(b.CACHE)) if r['label']=='353.a.353.1')
-    C=b.curve_from_row(row)
+    C=b.curve_from_row(CURVE_353)
     t={'P':(0,0),'Q':('infinity',0),'R':(0,-1),
        'order_P':'rank 0','order_Q':'rank 0','torsion_exponent':11}
     F,images,_,pole=b._model_for_triple(C,t)
