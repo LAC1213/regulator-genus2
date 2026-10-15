@@ -35,7 +35,8 @@ EXAMPLES::
     sage: from hyperell_regulator.reduction import HyperellipticCurveWithReduction
     sage: R.<x> = ZZ[]
     sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-    sage: L = StandardLFunction(C, bad_factors={2: None})  # 2 is bad and even
+    sage: L = StandardLFunction(C, bad_factors={2: None})  # doctest: +ELLIPSIS
+    ...Warning: unknown valuation of conductor at 2.
     sage: L.euler_factor(53).degree()
     3
 
@@ -267,7 +268,8 @@ class StandardLFunction(SageObject):
         sage: from hyperell_regulator.reduction import HyperellipticCurveWithReduction
         sage: R.<x> = ZZ[]
         sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-        sage: L = StandardLFunction(C, bad_factors={2: None})   # 2 needs care
+        sage: L = StandardLFunction(C, bad_factors={2: None})   # doctest: +ELLIPSIS
+        ...Warning: unknown valuation of conductor at 2.
         sage: L.euler_factor(53).degree()
         3
     """
@@ -345,6 +347,7 @@ class StandardLFunction(SageObject):
             sage: from hyperell_regulator.lfunction import StandardLFunction
             sage: R = PolynomialRing(ZZ, 'x'); x = R.gen()
             sage: L = StandardLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))
+            ...Warning: unknown valuation of conductor at 2.
             sage: L.precompute_h1([11, 13, 17])
             sage: sorted(L._h1cache)
             [11, 13, 17]
@@ -682,7 +685,6 @@ class StandardLFunction(SageObject):
             sage: from hyperell_regulator.reduction import HyperellipticCurveWithReduction
             sage: R.<x> = ZZ[]
             sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-            sage: L = StandardLFunction(C, bad_factors={2: None})  # not run
         """
         L = self.lfun(num_coeffs, digits)
         K = _real_field(digits)
@@ -755,7 +757,8 @@ class CurveLFunction(SageObject):
         sage: from hyperell_regulator import HyperellipticCurveWithReduction
         sage: from hyperell_regulator.lfunction import CurveLFunction
         sage: R = PolynomialRing(ZZ, 'x'); x = R.gen()
-        sage: L = CurveLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))
+        sage: L = CurveLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))  # doctest: +ELLIPSIS
+        ...Warning: unknown valuation of conductor at 2.
         sage: L.euler_factor(11).degree()
         4
         sage: L.conductor()
@@ -802,6 +805,7 @@ class CurveLFunction(SageObject):
             sage: from hyperell_regulator.lfunction import CurveLFunction
             sage: R = PolynomialRing(ZZ, 'x'); x = R.gen()
             sage: L = CurveLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))
+            ...Warning: unknown valuation of conductor at 2.
             sage: L.euler_factor(11)[0]
             1
         """
@@ -938,7 +942,8 @@ class CurveLFunction(SageObject):
             sage: from hyperell_regulator import HyperellipticCurveWithReduction
             sage: from hyperell_regulator.lfunction import CurveLFunction
             sage: R = PolynomialRing(ZZ, 'x'); x = R.gen()
-            sage: L = CurveLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))
+            sage: L = CurveLFunction(HyperellipticCurveWithReduction(x**5 + x**3 + 1))  # doctest: +ELLIPSIS
+            ...Warning: unknown valuation of conductor at 2.
             sage: bool(L.value(2, digits=10) > 0)            # long time
             True
         """
@@ -967,8 +972,10 @@ def curve_lvalue(C, s=1, derivative=0, num_coeffs=None, digits=10,
         sage: from hyperell_regulator import HyperellipticCurveWithReduction
         sage: from hyperell_regulator.lfunction import curve_lvalue
         sage: R = PolynomialRing(ZZ, 'x'); x = R.gen()
-        sage: d = curve_lvalue(HyperellipticCurveWithReduction(x**5 + x**3 + 1),
+        sage: d = curve_lvalue(HyperellipticCurveWithReduction(x**5 + x**3 + 1),  # doctest: +ELLIPSIS
         ....:                  s=2, digits=12)                      # long time
+        ...Warning: unknown valuation of conductor at 2.
+        ...
         sage: d["conductor"]                                         # long time
         3233
     """

@@ -259,8 +259,8 @@ class Cover:
             sage: x = ring().gen()
             sage: import numpy as np
             sage: C = Cover(x^5 + x^2 + x, x, 0).shifted(1.0)
-            sage: bool(abs(_eval(C.F, 1e-30)
-            ....:          - _eval([1, 0, 0, 1, 1, 0], 1 + 1e-30)) < 1e-12)
+            sage: bool(abs(np.polyval(C.F, 1e-30)
+            ....:          - np.polyval([1, 0, 0, 1, 1, 0], 1 + 1e-30)) < 1e-12)
             True
         """
         if c == 0:
@@ -363,7 +363,7 @@ class Cover:
             sage: import numpy as np
             sage: C = Cover(x^5 + x^2 + 2*x + 1, x + 1, 1)
             sage: x, y = C.fibre(2.0)
-            sage: bool(abs(y ** 2 - _eval(C.F, x)).max() < 1e-12)
+            sage: bool(abs(y ** 2 - np.polyval(C.F, x)).max() < 1e-12)
             True
         """
         if self.exact is not None:

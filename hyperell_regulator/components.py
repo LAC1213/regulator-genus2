@@ -396,7 +396,7 @@ def search_rational_points(C, bound=12):
         sage: R.<x> = ZZ[]
         sage: C = HyperellipticCurveWithReduction(-x^2 - x, x^3 + x^2 + x + 1)
         sage: sorted(search_rational_points(C), key=str)
-        [(-1, 0), (0, -1), (0, 0), ('infinity', -1), ('infinity', 0)]
+        [('infinity', -1), ('infinity', 0), (-1, 0), (0, -1), (0, 0)]
     """
     g = C.genus()
     RQ = PolynomialRing(QQ, 'x')
@@ -472,7 +472,7 @@ def affine_model(C, points):
         sage: from hyperell_regulator.components import HyperellipticCurveWithReduction, affine_model
         sage: R.<x> = ZZ[]
         sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-        sage: D, pts, a = affine_model(C, [(0, 1), None])
+        sage: D, pts, a = affine_model(C, [(0, 1), ('infinity', 0)])
         sage: all(p is not None for p in pts)
         True
     """

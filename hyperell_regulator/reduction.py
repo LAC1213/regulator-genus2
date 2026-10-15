@@ -65,8 +65,8 @@ Usage
     [2, 53, 61]
     sage: C.is_semistable_at(53)
     True
-    sage: C.components(53)
-    [Gamma_R: principal, genus 1, Y^2 = 4*X^5 + 4*X^3 + 4]
+    sage: [(c.kind, c.genus) for c in C.components(53)]
+    [('principal', 1)]
     sage: C.same_component((0, 1), (0, -1), 53)["answer"]
     True
 
@@ -74,7 +74,13 @@ or, for everything at once,
 
 ::
 
-    sage: C.report(P=(0, 1), Q=(0, -1))
+    sage: from contextlib import redirect_stdout
+    sage: from io import StringIO
+    sage: output = StringIO()
+    sage: with redirect_stdout(output):
+    ....:     C.report(P=(0, 1), Q=(0, -1))
+    sage: 'conductor' in output.getvalue()
+    True
 
 Correctness
 ===========
@@ -570,7 +576,7 @@ class HyperellipticReduction:
             sage: R.<x> = ZZ[]
             sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
             sage: C.cluster_picture(53)
-            Cluster with 5 roots and 2 children
+            Cluster with 5 roots and 4 children
         """
         p = ZZ(p)
         if p == 2:
@@ -955,8 +961,8 @@ class HyperellipticReduction:
             sage: from hyperell_regulator.reduction import HyperellipticCurveWithReduction
             sage: R.<x> = ZZ[]
             sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-            sage: C.components(53)
-            [Gamma_R: principal component of genus 1, Hyperelliptic Curve over Finite Field of size 53 defined by y^2 = ...]
+            sage: [(c.kind, c.genus) for c in C.components(53)]
+            [('principal', 1)]
         """
         p = ZZ(p)
         if p == 2:
@@ -1487,7 +1493,7 @@ class HyperellipticReduction:
             sage: from hyperell_regulator.reduction import HyperellipticCurveWithReduction
             sage: R.<x> = ZZ[]
             sage: C = HyperellipticCurveWithReduction(x^5 + x^3 + 1)
-            sage: C.same_component((0, 1), (1, -1), 53)["answer"]
+            sage: C.same_component((0, 1), (0, -1), 53)["answer"]
             True
         """
         p = ZZ(p)

@@ -50,6 +50,9 @@ jobs:
           cd "$RUNNER_TEMP"
           sage -python -m hyperell_regulator.frobenius --check
 
+      - name: Run Sage doctests
+        run: sage -t "$GITHUB_WORKSPACE/hyperell_regulator"
+
       - name: Run test suite
         if: matrix.run_tests
         run: |
