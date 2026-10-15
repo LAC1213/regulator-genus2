@@ -80,8 +80,8 @@ def periods_stokes(F, phi, prec=None, check_tol=1e-6, verbose=False):
         sage: from hyperell_regulator.regulator.polynomials import ring
         sage: import numpy as np
         sage: x = ring().gen()
-        sage: v = periods_stokes(x^5 + x^2 + 2*x + 1, (x + 1, 1))
-        sage: bool(abs(v - np.array([6.05371274, -1.63861910, 8.17585620])).max() < 1e-6)
+        sage: v = periods_stokes(x^5 + x^2 + 2*x + 1, (x + 1, 1))  # long time
+        sage: bool(abs(v - np.array([6.05371274, -1.63861910, 8.17585620])).max() < 1e-6)  # long time
         True
     """
     if prec is not None:
@@ -180,8 +180,8 @@ def regulator_stokes(F, phi, fast=True, prec=None, check_tol=1e-6,
         sage: from hyperell_regulator.regulator.polynomials import ring
         sage: import numpy as np
         sage: x = ring().gen()
-        sage: v = regulator_stokes(x^5 + x^2 + 2*x + 1, (x + 1, 1))
-        sage: bool(abs(v - np.array([-3.25424741, 1.26900145, 14.42730926])).max() < 1e-6)
+        sage: v = regulator_stokes(x^5 + x^2 + 2*x + 1, (x + 1, 1))  # long time
+        sage: bool(abs(v - np.array([-3.25424741, 1.26900145, 14.42730926])).max() < 1e-6)  # long time
         True
     """
     if prec is not None:

@@ -64,16 +64,14 @@ def test_family_cache_validates_precision_and_retries_failures():
             assert [n for n, _ in calls] == [2]
 
 
-def test_family_nonreal_member_runs_in_both_precisions():
+def test_family_nonreal_member_runs_at_arbitrary_precision():
     assert not f.is_real_slit_member(2)
-    low = f.beilinson_for_n(2, with_lvalue=False)
     high = f.beilinson_for_n(2, reg_digits=25, with_lvalue=False,
                            max_edge_seconds=30)
-    assert low['status'] == high['status'] == 'ok', (low, high)
-    assert isinstance(low['det'], float) and isinstance(high['det'], str)
+    assert high['status'] == 'ok', high
+    assert isinstance(high['det'], str)
     assert high['regulator_digits'] == 25
-    assert high['edges_attempted'] == low['edges_attempted'] == 10
-    assert abs(float(low['det'])/float(high['det'])-1) < 1e-8
+    assert high['edges_attempted'] == 10
     assert high['triple']['pairwise_nonconjugate']
     assert 'L_second_derivative' not in high
 

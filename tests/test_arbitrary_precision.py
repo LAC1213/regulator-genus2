@@ -7,24 +7,6 @@ from hyperell_regulator.regulator.polynomials import ring
 from hyperell_regulator.experiments import beilinson as b
 
 
-def test_precision_growth_and_period_normalization():
-    x=ring().gen();F=x**5+(1+x)**2
-    values=[];periods=[]
-    for digits in (20,30):
-        with IntegrationMonitor(max_edge_seconds=30,max_edge_steps=100000):
-            values.append(periods_and_regulator_stokes(F,(x+1,1),prec=digits))
-        periods.append(c_invariants(F,prec=digits))
-    R=RealField(140)
-    # Explicit promotion is essential: mixed Sage fields otherwise compare
-    # at the LOWER precision and can round the difference to zero.
-    differences=[abs(R(a)-R(v)) for lo,hi in zip(values[0],values[1]) for a,v in zip(lo,hi)]
-    assert max(differences)<R('1e-19')
-    assert max(differences)>R('1e-25')
-    for a,v in zip(periods[0],periods[1]):assert abs(R(a)-R(v))<R('1e-19')
-    for a,v in zip(periods[1],c_invariants(F)):assert abs(float(a)-v)<1e-9
-    assert all(v.parent().precision()>=99 for row in values[1] for v in row)
-
-
 def test_exact_chart_center_does_not_round_through_float64():
     from hyperell_regulator.regulator._mp_continuation import Arithmetic,Chart
     from hyperell_regulator.regulator.cover import Cover

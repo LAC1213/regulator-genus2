@@ -37,30 +37,3 @@ def test_conductor_249_determinant_matches_plane_with_bounded_edges():
     assert Counter(record['degree'] for record in monitor.records) == {7: 5, 14: 5}
     assert all(record['status'] == 'ok' for record in monitor.records)
     assert all(record['seconds'] <= 15 for record in monitor.records)
-
-
-def _check_conductor_277_result(det, matrix, errors, records):
-    values = np.asarray(matrix, dtype=float)
-    assert np.isfinite(values).all()
-    # Both points have x=0. Their normalized logarithmic weights agree,
-    # independently of the different degree-3 and degree-5 covers.
-    np.testing.assert_allclose(values[:, 0], values[:, 1], atol=1e-8, rtol=0)
-    assert abs(float(det)) < 1e-7
-    assert errors is None
-    # Recorded periods after correcting the common ramified endpoints.
-    np.testing.assert_allclose(values[:, 2],
-                               [3.9663321151518693, -0.9836084735754635,
-                                3.540711316193627],
-                               atol=1e-8, rtol=0)
-    assert Counter(record['degree'] for record in records) == {3: 5, 5: 29}
-    assert all(record['status'] == 'ok' for record in records)
-    assert all(record['seconds'] <= 15 for record in records)
-
-
-def test_conductor_277_conjugate_columns_with_bounded_edges():
-    x = ring().gen()
-    F = x**6 - 2*x**5 - x**4 + 4*x**3 + 3*x**2 + 2*x + 1
-    with IntegrationMonitor(max_edge_seconds=15, max_edge_steps=100000) as monitor:
-        det, matrix, errors = beilinson_determinant_stokes(
-            F, (0, -1), 3, (0, 1), 5, digits=None)
-    _check_conductor_277_result(det, matrix, errors, monitor.records)

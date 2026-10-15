@@ -396,8 +396,8 @@ def wedge_matrix(cov, check_tol=1e-6, verbose=False):
         sage: from hyperell_regulator.regulator.polynomials import ring
         sage: x = ring().gen()
         sage: from hyperell_regulator.regulator.stokes import wedge_matrix
-        sage: H = wedge_matrix(Cover(x^5 + x^2 + 2*x + 1, x + 1, 1))
-        sage: bool(abs(H + H.conj().T).max() < 1e-6 * abs(H).max())
+        sage: H = wedge_matrix(Cover(x^5 + x^2 + 2*x + 1, x + 1, 1))  # long time
+        sage: bool(abs(H + H.conj().T).max() < 1e-6 * abs(H).max())  # long time
         True
     """
     return _assemble(cov, False, False, check_tol, verbose)[0]

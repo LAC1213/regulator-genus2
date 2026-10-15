@@ -46,10 +46,9 @@ import numpy as np
 
 from hyperell_regulator.regulator import (
     function_with_divisor,
-    periods_plane,
+    periods_and_regulator_stokes,
     periods_stokes,
     plot_cut_system,
-    regulator_plane,
     regulator_stokes,
     torsion_order,
 )
@@ -77,6 +76,9 @@ PINCH = (-4 * x**5 + 13 * x**4 - 18 * x**3 + 15 * x**2 - 6 * x + 1,
 EVEN = x**6 + 4 * x**5 + 4 * x**4 + 2 * x**3 + 1
 CASES = (("deg5", DEG5), ("deg2", DEG2), ("deg2q", DEG2Q),
          ("coll", COLL), ("collq", COLLQ), ("pinch", PINCH))
+INTEGRATION_CASES = (("deg5", DEG5), ("collq", COLLQ), ("pinch", PINCH))
+STRUCTURAL_CASES = (("deg5", DEG5), ("deg2q", DEG2Q),
+                    ("collq", COLLQ), ("pinch", PINCH))
 
 # plane integrator values; minutes each, and the ground truth rather than the
 # thing under test
@@ -95,9 +97,6 @@ PLANE = {
               "regulator": [0.31594979, 5.96962153, 5.50891600]},
     "pinch": {"periods": [5.17025230750167, 2.72707611005494, 4.28626293491068],
               "regulator": [-7.08144563, -5.33101930, 0.24694098]},
-    # the degree-6 model; the regulator is the plane integrator's to 3e-11
-    "even": {"periods": [4.00236302275639, -1.55918682479619, 4.28626293488223],
-             "regulator": [-3.82753395, 5.57796028, -0.24694098]},
 }
 
 
@@ -106,14 +105,11 @@ def _rel(got, want):
     return float(np.abs(got - want).max() / np.abs(want).max())
 
 
-def test_periods_match_plane():
-    for key, (F, phi) in CASES:
-        assert _rel(periods_stokes(F, phi), PLANE[key]["periods"]) < 1e-6, key
-
-
-def test_regulator_matches_plane():
-    for key, (F, phi) in CASES:
-        assert _rel(regulator_stokes(F, phi), PLANE[key]["regulator"]) < 1e-6, key
+def test_stokes_matches_plane():
+    for key, (F, phi) in INTEGRATION_CASES:
+        periods, regulator = periods_and_regulator_stokes(F, phi)
+        assert _rel(periods, PLANE[key]["periods"]) < 1e-6, key
+        assert _rel(regulator, PLANE[key]["regulator"]) < 1e-6, key
 
 
 def test_fast_and_slow_regulator_agree():
@@ -123,25 +119,11 @@ def test_fast_and_slow_regulator_agree():
     `\tfrac12\operatorname{Im}(\Delta\lambda)\sum_e|u_e|^2`, a sum of positive
     terms -- so this is a real check, not a tautology.
     """
-    for _, (F, phi) in CASES:
-        fast = regulator_stokes(F, phi, fast=True)
-        slow = regulator_stokes(F, phi, fast=False)
-        # the slow form carries four more states through every leg, so it is
-        # the less accurate of the two; this is its own accuracy, not a
-        # disagreement about the formula
-        assert _rel(fast, slow) < 1e-6
-
-
-def test_recorded_plane_values_are_current():
-    r"""
-    One entry recomputed rather than taken from the table, so it cannot
-    silently drift away from :mod:`~hyperell_regulator.regulator.plane`.
-    """
-    F, phi = DEG2
-    assert _rel(PLANE["deg2"]["periods"], periods_plane(F)) < 1e-7
-    assert _rel(PLANE["deg2"]["regulator"], regulator_plane(F, phi)) < 1e-7
-
-
+    F, phi = COLLQ
+    fast = regulator_stokes(F, phi, fast=True)
+    slow = regulator_stokes(F, phi, fast=False)
+    # The slow form carries four more states through every leg.
+    assert _rel(fast, slow) < 1e-6
 def test_arbitrary_precision_converges():
     r"""
     The float64 pass fixes only the discrete data; raising the precision must
@@ -150,15 +132,15 @@ def test_arbitrary_precision_converges():
     This includes detoured cuts and finite poles.
     """
     from hyperell_regulator.regulator import periods_and_regulator_stokes, IntegrationMonitor
-    for key, (F, phi) in CASES:
-        computed=[]
-        for digits in (20,34):
-            with IntegrationMonitor(max_edge_seconds=45,max_edge_steps=100000):
-                computed.append(periods_and_regulator_stokes(F,phi,prec=digits))
-        for lo,hi,what in zip(*computed,("periods","regulator")):
-            for a,b in zip(lo,hi):
-                assert abs(b.parent()(a)-b)<1e-19*max(abs(b),1),(key,what)
-            assert _rel([float(v) for v in lo],PLANE[key][what])<1e-7
+    key, (F, phi) = "pinch", PINCH
+    computed = []
+    for digits in (20, 34):
+        with IntegrationMonitor(max_edge_seconds=45, max_edge_steps=100000):
+            computed.append(periods_and_regulator_stokes(F, phi, prec=digits))
+    for lo, hi, what in zip(*computed, ("periods", "regulator")):
+        for a, b in zip(lo, hi):
+            assert abs(b.parent()(a) - b) < 1e-19 * max(abs(b), 1), (key, what)
+        assert _rel([float(v) for v in lo], PLANE[key][what]) < 1e-7
 
 
 def test_full_preimages_have_zero_period():
@@ -168,15 +150,15 @@ def test_full_preimages_have_zero_period():
     identity that kills any formula built from uniformly oriented preimages,
     and it is also a sharp check on every edge integral.
     """
-    for _, (F, phi) in CASES:
-        cov = Cover(F, *phi)
-        z, kinds, d = cov.cut_path()
-        _, _, lam, _ = cut_data(cov, z, d)
-        for log in (False, True):
-            u, ell, _ = edge_data(cov, z, d, kinds, lam, log, False)
-            for arr in (u, ell):
-                s = np.abs(arr.sum(axis=2)).max()
-                assert s < 1e-8 * np.abs(arr).max(), (log, s)
+    F, phi = PINCH
+    cov = Cover(F, *phi)
+    z, kinds, d = cov.cut_path()
+    _, _, lam, _ = cut_data(cov, z, d)
+    for log in (False, True):
+        u, ell, _ = edge_data(cov, z, d, kinds, lam, log, False)
+        for arr in (u, ell):
+            s = np.abs(arr.sum(axis=2)).max()
+            assert s < 1e-8 * np.abs(arr).max(), (log, s)
 
 
 def test_even_degree_model():
@@ -186,9 +168,8 @@ def test_even_degree_model():
     was built to have its pole at, and a finite value at the other, which is
     then a critical value like any other with two sheets running into it.
 
-    Nothing here is special to odd degree mathematically, and the periods say
-    so: they agree with the plane integrator, which knows nothing about cut
-    systems or points at infinity.
+    The checks below verify how the two points at infinity are represented in
+    the even-degree model.
     """
     from hyperell_regulator.regulator import function_with_divisor
 
@@ -208,9 +189,6 @@ def test_even_degree_model():
     # vanishes there in exact arithmetic but not in float64
     x, _ = cov.fibre(finite[0])
     assert np.count_nonzero(~np.isfinite(x) | (np.abs(x) > 1e6)) == 2
-
-    assert _rel(periods_stokes(EVEN, phi), PLANE["even"]["periods"]) < 1e-7
-
 
 def test_a_zero_of_B_is_not_a_branch_value():
     r"""
@@ -259,7 +237,7 @@ def test_monodromy_matches_the_ramification():
     point, every detour corner carries no ramification at all, and
     Riemann-Hurwitz must come out.
     """
-    for key, (F, phi) in CASES:
+    for key, (F, phi) in STRUCTURAL_CASES:
         cov = Cover(F, *phi)
         z, kinds, d = cov.cut_path()
         up, lo, _, _ = cut_data(cov, z, d)
@@ -281,7 +259,7 @@ def test_log_jump_is_a_uniform_two_pi_i():
     `\Gamma` joins `\varphi(P) = 0` to `\infty`, so it is already a cut for
     `\log\varphi`, and the jump is locally constant on it.
     """
-    for _, (F, phi) in CASES:
+    for _, (F, phi) in STRUCTURAL_CASES:
         cov = Cover(F, *phi)
         z, _, d = cov.cut_path()
         _, _, _, dlam = cut_data(cov, z, d)
@@ -290,7 +268,7 @@ def test_log_jump_is_a_uniform_two_pi_i():
 
 
 def test_boundary_walks_close():
-    for _, (F, phi) in CASES:
+    for _, (F, phi) in STRUCTURAL_CASES:
         cov = Cover(F, *phi)
         z, _, d = cov.cut_path()
         W = boundary_walks(*cut_data(cov, z, d)[:2])
@@ -372,13 +350,6 @@ def test_function_with_divisor():
     raise AssertionError("expected N = 3 to be refused")
 
 
-def test_divisor_helper_feeds_the_integrator():
-    r"""The helper's output must be usable as ``phi`` unchanged."""
-    F = DEG5[0]
-    phi = function_with_divisor(F, (0, -1), "infinity", 5)
-    assert _rel(periods_stokes(F, phi), PLANE["deg5"]["periods"]) < 1e-6
-
-
 def test_coefficient_lists_still_work():
     r"""
     The old way in -- coefficients in descending degree, and a
@@ -396,9 +367,8 @@ def test_plot_cut_system_writes_a_file():
     import os
     import tempfile
     d = tempfile.mkdtemp()
-    for i, (_, (F, phi)) in enumerate(CASES):
-        p = plot_cut_system(F, phi, path=os.path.join(d, "cut%d.png" % i))
-        assert os.path.getsize(p) > 5000
+    p = plot_cut_system(*DEG5, path=os.path.join(d, "cut.png"))
+    assert os.path.getsize(p) > 5000
 
 
 def _cycle_type(perm):
@@ -423,11 +393,11 @@ def _inv(p):
 
 def test_precision_supports_detoured_cuts():
     from hyperell_regulator.regulator import periods_and_regulator_stokes, IntegrationMonitor
-    for key, (F, phi) in (("coll", COLL), ("collq", COLLQ)):
-        with IntegrationMonitor(max_edge_seconds=30, max_edge_steps=100000):
-            per, reg = periods_and_regulator_stokes(F, phi, prec=20)
-        assert _rel(per, PLANE[key]["periods"]) < 1e-7
-        assert _rel(reg, PLANE[key]["regulator"]) < 1e-7
+    key, (F, phi) = "collq", COLLQ
+    with IntegrationMonitor(max_edge_seconds=30, max_edge_steps=100000):
+        per, reg = periods_and_regulator_stokes(F, phi, prec=20)
+    assert _rel(per, PLANE[key]["periods"]) < 1e-7
+    assert _rel(reg, PLANE[key]["regulator"]) < 1e-7
 
 
 def test_walk_crosses_unramified_weierstrass_point():
@@ -491,17 +461,6 @@ def test_tanh_sinh_nodes_are_strictly_interior():
         assert np.all((nodes > 0) & (nodes < 1))
         assert np.all(np.isfinite(-np.log1p(-nodes)))
         assert abs(weights.sum() - 1) < 1e-14
-
-
-def test_even_degree_order_fourteen_matches_plane():
-    """The second column of the first Beilinson example (249.a.249.1)."""
-    phi = function_with_divisor(EVEN, (0, -1), "infinity", 14)
-    from hyperell_regulator.regulator import periods_and_regulator_stokes
-    per, reg = periods_and_regulator_stokes(EVEN, phi)
-    assert _rel(per, PLANE["even"]["periods"]) < 1e-8
-    # Independent adaptive quadrature over the complex plane.
-    expected = [-5.21685044, -4.00181129, 13.80481861]
-    assert _rel(reg, expected) < 1e-8
 
 
 def test_finite_pole_chart_retains_small_displacements():

@@ -1758,7 +1758,7 @@ def self_test(verbose=True):
     EXAMPLES::
 
         sage: from hyperell_regulator.reduction import self_test
-        sage: self_test(verbose=False)
+        sage: self_test(verbose=False)  # long time
         True
     """
     S = PolynomialRing(ZZ, 'x')

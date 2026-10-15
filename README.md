@@ -84,4 +84,5 @@ Install the `test` extra as shown above, then run:
 
 ```sh
 sage -python -m pytest
+sage -t hyperell_regulator
 ```

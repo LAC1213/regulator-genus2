@@ -57,11 +57,11 @@ EXAMPLES::
     sage: F = x^5 + (1 + x)^2                             # y^2 = x^5 + (1+x)^2
     sage: phi = function_with_divisor(F, (0, -1), "infinity", 5); phi
     (x + 1, 1)
-    sage: bool(abs(periods_stokes(F, phi)
-    ....:          - np.array([6.05371274, -1.63861910, 8.17585620])).max() < 1e-6)
+    sage: bool(abs(periods_stokes(  # long time
+    ....:          F, phi) - np.array([6.05371274, -1.63861910, 8.17585620])).max() < 1e-6)
     True
-    sage: bool(abs(regulator_stokes(F, phi)
-    ....:          - np.array([-3.25424741, 1.26900145, 14.42730926])).max() < 1e-6)
+    sage: bool(abs(regulator_stokes(  # long time
+    ....:          F, phi) - np.array([-3.25424741, 1.26900145, 14.42730926])).max() < 1e-6)
     True
 """
 
